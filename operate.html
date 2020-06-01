@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <script src="https://unpkg.com/@tensorflow/tfjs"></script>
+    <script src="https://unpkg.com/@tensorflow-models/mobilenet"></script>
+    <script src="https://unpkg.com/@tensorflow-models/knn-classifier"></script>
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"> -->
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.8.2/css/all.css"
+    />
+    <!-- Google Fonts -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
+    />
+    <!-- Bootstrap core CSS -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.4.1/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Material Design Bootstrap -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.14.0/css/mdb.min.css"
+      rel="stylesheet"
+    />
+    <title>Operate</title>
+    <style>
+      #console {
+        color: dodgerblue;
+        font-size: 20px;
+        margin-left: 20px;
+        margin-bottom: 10px;
+      }
+
+      /* The switch - the box around the slider */
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+      }
+
+      /* Hide default HTML checkbox */
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      #control {
+        position: fixed;
+        /* or absolute */
+        top: 15%;
+        left: 75%;
+      }
+
+      #r {
+        position: absolute;
+        bottom: 23%;
+        margin: 20%;
+        width: 60%;
+      }
+
+      /* The slider */
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        -webkit-transition: 0.4s;
+        transition: 0.4s;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: '';
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        -webkit-transition: 0.4s;
+        transition: 0.4s;
+      }
+
+      input:checked + .slider {
+        background-color: #2196f3;
+      }
+
+      input:focus + .slider {
+        box-shadow: 0 0 1px #2196f3;
+      }
+
+      input:checked + .slider:before {
+        -webkit-transform: translateX(26px);
+        -ms-transform: translateX(26px);
+        transform: translateX(26px);
+      }
+
+      /* Rounded sliders */
+      .slider.round {
+        border-radius: 34px;
+      }
+
+      .slider.round:before {
+        border-radius: 50%;
+      }
+
+      #container {
+        padding: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/7.11.0/firebase-app.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/7.6.1/firebase-database.js"></script>
+
+    <script>
+      // Your web app's Firebase configuration
+      var firebaseConfig = {
+        apiKey: 'AIzaSyDhCOx7CpelOEg6YKjjCRG2sCVSXpanPZg',
+        authDomain: 'alien-span-246516.firebaseapp.com',
+        databaseURL: 'https://alien-span-246516.firebaseio.com',
+        projectId: 'alien-span-246516',
+        storageBucket: 'alien-span-246516.appspot.com',
+        messagingSenderId: '463798400100',
+        appId: '1:463798400100:web:0a6d0159810f23630d5b71',
+        measurementId: 'G-353MPMDQDS'
+      };
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+
+      function writeData() {
+        var userId;
+        firebase
+          .database()
+          .ref('bulb')
+          .set({
+            Condition: 1
+          });
+      }
+      function writeData1() {
+        var userId;
+        firebase
+          .database()
+          .ref('bulb')
+          .set({
+            Condition: 0
+          });
+      }
+    </script>
+
+    <div class="outer">
+      <nav class="navbar navbar-light bg-success">
+        <a class="navbar-brand" href="index.html">
+          AR Smart Control
+        </a>
+      </nav>
+      <div class="container" style="margin-top:20px;">
+        <video
+          id="video"
+          autoplay
+          muted
+          playsinline
+          width="400"
+          height="400"
+        ></video>
+        <div id="control">
+          <label class="switch">
+            <input type="checkbox" id="myCheck" onclick="myFunction()" />
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div id="r">
+          <input type="range" class="custom-range" defaultValue="{0}" />
+        </div>
+
+        <div id="console"></div>
+      </div>
+    </div>
+    <script>
+      function myFunction() {
+        var checkBox = document.getElementById('myCheck');
+        if (checkBox.checked == true) {
+          writeData();
+        } else {
+          writeData1();
+        }
+      }
+    </script>
+
+    <script>
+      async function app() {
+        let net;
+        var classifier = knnClassifier.create();
+        console.log('Loading mobilenet..');
+        // Load the model.
+        net = await mobilenet.load();
+        console.log('Successfully loaded model');
+
+        //geting the saved knn classifier from local storage
+        let dataset = localStorage.getItem('myData');
+        let tensorObj = JSON.parse(dataset);
+        //covert back to tensor
+        Object.keys(tensorObj).forEach(key => {
+          tensorObj[key] = tf.tensor(tensorObj[key], [
+            tensorObj[key].length / 1024,
+            1024
+          ]);
+        });
+        classifier.setClassifierDataset(tensorObj);
+        console.log('Classifier has been set up! Congrats! ');
+        var video = document.querySelector('#video');
+        console.log(video);
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: 'environment'
+          }
+        });
+
+        //stream -> raw stream of video
+        video.srcObject = stream;
+        // Create an object from Tensorflow.js data API which could capture image
+        // from the web camera as Tensor.
+        const webcam = await tf.data.webcam(video);
+
+        while (true) {
+          if (classifier.getNumClasses() > 0) {
+            const img = await webcam.capture();
+
+            // Get the activation from mobilenet from the webcam.
+            const activation = net.infer(img, 'conv_preds');
+            // Get the most likely class and confidence from the classifier module.
+            const result = await classifier.predictClass(activation);
+
+            const classes = ['Empty', 'LED-2', 'LED-3'];
+            document.getElementById('console').innerText = `Prediction: ${
+              classes[result.label]
+            }
+        Probability: ${result.confidences[result.label]}
+      `;
+            if (classes[result.label] === 'Empty') {
+              document.getElementById('control').style.visibility = 'hidden';
+              document.getElementById('r').style.visibility = 'hidden';
+            } else {
+              document.getElementById('control').style.visibility = 'visible';
+              document.getElementById('r').style.visibility = 'visible';
+            }
+            // Dispose the tensor to release the memory.
+            img.dispose();
+          }
+
+          await tf.nextFrame();
+        }
+      }
+      app();
+    </script>
+  </body>
+</html>

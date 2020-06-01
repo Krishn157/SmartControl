@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"> -->
+    <script src="https://unpkg.com/@tensorflow/tfjs"></script>
+    <script src="https://unpkg.com/@tensorflow-models/mobilenet"></script>
+    <script src="https://unpkg.com/@tensorflow-models/knn-classifier"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css">
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap">
+    <!-- Bootstrap core CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Material Design Bootstrap -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.14.0/css/mdb.min.css" rel="stylesheet">
+    <title>Calibrate</title>
+    <style>
+        #container {
+            padding: 10px;
+        }
+
+        #console {
+            color: dodgerblue;
+            font-size: 20px;
+            margin-left: 20px;
+            margin-bottom: 10px;
+
+        }
+
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: #e9ecef;
+        }
+    </style>
+</head>
+
+<body>
+    <div class='outer'>
+        <nav class='navbar navbar-light bg-success'>
+            <a class='navbar-brand' href='index.html'>
+                AR Smart Control
+            </a>
+        </nav>
+        <div id='container'>
+            <video id="video" autoplay muted playsinline width="400" height="400"></video>
+            <div id='console'></div>
+            <p>Tip: add each LED atleast 5 times to get optimum results.</p>
+
+            <button id='class-a' class='btn btn-dark btn-sm'>
+                Add Empty
+            </button>
+            <button id='class-b' class='btn btn-warning btn-sm'>
+                Add LED-2
+            </button>
+            <button id='class-c' class='btn btn-danger btn-sm'>
+                Add LED-3
+            </button>
+            <br />
+            <br />
+            <button id='save' class='btn btn-success btn-sm'>
+                SAVE
+            </button>
+        </div>
+    </div>
+    <script>
+        async function app() {
+            let net;
+            var classifier = knnClassifier.create();
+            console.log('Loading mobilenet..');
+
+            // Load the model.
+            net = await mobilenet.load();
+
+            console.log('Successfully loaded model');
+            var video = document.getElementById('video');
+            console.log(video);
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    facingMode: 'environment'
+                }
+            })
+
+            //stream -> raw stream of video
+            video.srcObject = stream;
+            // Create an object from Tensorflow.js data API which could capture image
+            // from the web camera as Tensor.
+            const webcam = await tf.data.webcam(video);
+
+            // Reads an image from the webcam and associates it with a specific class
+            // index.
+            const addExample = async classId => {
+                // Capture an image from the web camera.
+                const img = await webcam.capture();
+
+                // Get the intermediate activation of MobileNet 'conv_preds' and pass that
+                // to the KNN classifier.
+                const activation = net.infer(img, 'conv_preds');
+
+                // Pass the intermediate activation to the classifier.
+                classifier.addExample(activation, classId);
+
+                // Dispose the tensor to release the memory.
+                img.dispose();
+            };
+
+            // When clicking a button, add an example for that class.
+            document
+                .getElementById('class-a')
+                .addEventListener('click', () => addExample(0));
+            document
+                .getElementById('class-b')
+                .addEventListener('click', () => addExample(1));
+            document
+                .getElementById('class-c')
+                .addEventListener('click', () => addExample(2));
+
+            //saving model in local storage
+            document.getElementById('save').addEventListener('click', async () => {
+                let dataset = await classifier.getClassifierDataset();
+                var datasetObj = {};
+                Object.keys(dataset).forEach(key => {
+                    let data = dataset[key].dataSync();
+                    // use Array.from() so when JSON.stringify() it covert to an array string e.g [0.1,-0.2...]
+                    // instead of object e.g {0:"0.1", 1:"-0.2"...}
+                    datasetObj[key] = Array.from(data);
+                });
+                let jsonStr = JSON.stringify(datasetObj);
+                //can be change to other source
+                localStorage.setItem('myData', jsonStr);
+                console.log('saved');
+            });
+
+            while (true) {
+                if (classifier.getNumClasses() > 0) {
+                    const img = await webcam.capture();
+
+                    // Get the activation from mobilenet from the webcam.
+                    const activation = net.infer(img, 'conv_preds');
+                    // Get the most likely class and confidence from the classifier module.
+                    const result = await classifier.predictClass(activation);
+
+                    const classes = ['Empty', 'LED-2', 'LED-3'];
+                    document.getElementById('console').innerText = `Prediction: ${
+              classes[result.label]
+            }
+            Probability: ${result.confidences[result.label]}
+          `;
+
+                    // Dispose the tensor to release the memory.
+                    img.dispose();
+                }
+
+                await tf.nextFrame();
+            }
+        }
+        app();
+    </script>
+</body>
+
+</html>
